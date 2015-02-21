@@ -1,6 +1,6 @@
 <?php namespace Sharepoint\API;
 
-class Client
+class SPClient
 {
     /**
      * External Security Token Service for SPO
@@ -63,12 +63,12 @@ class Client
      * @param string $url
      * @param mixed $username
      *
-     * @throws Exception
+     * @throws \Exception
      */
     public function __construct($url, $username)
     {
         if (!function_exists('curl_init')) {
-            throw new Exception('CURL module not available! SPOClient requires CURL. See http://php.net/manual/en/book.curl.php');
+            throw new \Exception('CURL module not available! SPOClient requires CURL. See http://php.net/manual/en/book.curl.php');
         }
         $this->url = $url;
         $this->username = $username;
@@ -110,7 +110,7 @@ class Client
      * @param string $password
      *
      * @return string
-     * @throws Exception
+     * @throws \Exception
      */
     private function requestToken($username, $password)
     {
@@ -124,7 +124,7 @@ class Client
         curl_setopt($ch, CURLOPT_POSTFIELDS, $samlRequest);
         $result = curl_exec($ch);
         if ($result === false) {
-            throw new Exception(curl_error($ch));
+            throw new \Exception(curl_error($ch));
         }
         curl_close($ch);
 
@@ -138,11 +138,11 @@ class Client
      * @param string $password
      * @param string $address
      *
-     * @return type string
+     * @return string
      */
     private function buildSamlRequest($username, $password, $address)
     {
-        $samlRequestTemplate = file_get_contents('./SAML.xml');
+        $samlRequestTemplate = file_get_contents(__DIR__ . '/../../SAML.xml');
         $samlRequestTemplate = str_replace('{username}', $username, $samlRequestTemplate);
         $samlRequestTemplate = str_replace('{password}', $password, $samlRequestTemplate);
         $samlRequestTemplate = str_replace('{address}', $address, $samlRequestTemplate);
@@ -156,16 +156,16 @@ class Client
      * @param mixed $body
      *
      * @return mixed
-     * @throws Exception
+     * @throws \Exception
      */
     private function processToken($body)
     {
-        $xml = new DOMDocument();
+        $xml = new \DOMDocument();
         $xml->loadXML($body);
-        $xpath = new DOMXPath($xml);
+        $xpath = new \DOMXPath($xml);
         if ($xpath->query("//S:Fault")->length > 0) {
             $nodeErr = $xpath->query("//S:Fault/S:Detail/psf:error/psf:internalerror/psf:text")->item(0);
-            throw new Exception($nodeErr->nodeValue);
+            throw new \Exception($nodeErr->nodeValue);
         }
         $nodeToken = $xpath->query("//wsse:BinarySecurityToken")->item(0);
 
@@ -178,7 +178,7 @@ class Client
      * @param mixed $token
      *
      * @return string
-     * @throws Exception
+     * @throws \Exception
      */
     private function submitToken($token)
     {
@@ -194,7 +194,7 @@ class Client
         curl_setopt($ch, CURLOPT_HEADER, true);
         $result = curl_exec($ch);
         if ($result === false) {
-            throw new Exception(curl_error($ch));
+            throw new \Exception(curl_error($ch));
         }
         $header = substr($result, 0, curl_getinfo($ch, CURLINFO_HEADER_SIZE));
         curl_close($ch);
@@ -236,8 +236,8 @@ class Client
      *
      * @param mixed $options
      *
-     * @throws Exception
      * @return mixed
+     * @throws \Exception
      */
     public function request($options)
     {
@@ -274,7 +274,7 @@ class Client
 
         $result = curl_exec($ch);
         if ($result === false) {
-            throw new Exception(curl_error($ch));
+            throw new \Exception(curl_error($ch));
         }
 
         curl_close($ch);
@@ -294,7 +294,7 @@ class Client
 
     public function getList($name)
     {
-        $list = new List($this, $name);
+        $list = new SPList($this, $name);
 
         return $list;
     }

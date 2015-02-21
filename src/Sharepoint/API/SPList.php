@@ -1,14 +1,153 @@
-<?php
-/**
- * Created by PhpStorm.
- * User: janstolle
- * Date: 21/02/2015
- * Time: 16:44
- */
+<?php namespace Sharepoint\API;
 
-namespace Sharepoint\API;
+class SPList
+{
+    /**
+     * SPO Rest client
+     *
+     * @var mixed
+     */
+    public $service;
 
 
-class SPList {
+    /**
+     * Name of the SharePoint list
+     *
+     * @var string
+     */
+    public $name;
 
+    /**
+     * Class constructor
+     *
+     * @param mixed $service
+     * @param string $name
+     */
+    public function __construct($service, $name)
+    {
+        $this->service = $service;
+        $this->name = $name;
+    }
+
+    /**
+     * Get Single List Item
+     *
+     * @param $id
+     *
+     * @return mixed
+     */
+    public function getItem($id)
+    {
+        $options = array(
+            'list' => $this->name,
+            'id' => $id,
+            'method' => 'GET'
+        );
+        $data = $this->service->requestList($options);
+
+        return $data->d;
+    }
+
+    /**
+     * Get List Item(s)
+     *
+     * @return mixed
+     */
+    public function getItems()
+    {
+        $options = array(
+            'list' => $this->name,
+            'method' => 'GET'
+        );
+        $data = $this->service->requestList($options);
+
+        return $data->d->results;
+    }
+
+    /**
+     * Update List Item operation
+     *
+     * @param integer $id
+     * @param array $itemProperties
+     */
+    public function updateItem($id, $itemProperties)
+    {
+        $itemProperties['__metadata'] = array('type' => $this->getListItemEntityType());  //append entity metadata type
+        $options = array(
+            'list' => $this->name,
+            'id' => $id,
+            'data' => $itemProperties,
+            'method' => 'POST',
+            'xhttpmethod' => 'MERGE',
+            'formdigest' => $this->service->formDigest,
+            'etag' => '*'
+        );
+        $data = $this->service->requestList($options);
+    }
+
+    /**
+     * Delete List Item
+     *
+     * @param Integer $id
+     */
+    public function deleteItem($id)
+    {
+        $options = array(
+            'list' => $this->name,
+            'id' => $id,
+            'method' => 'POST',
+            'xhttpmethod' => 'DELETE',
+            'formdigest' => $this->service->formDigest,
+            'etag' => '*'
+        );
+        $this->service->requestList($options);
+    }
+
+    /**
+     * Add List Item
+     *
+     * @param array $itemProperties
+     */
+    public function addItem($itemProperties)
+    {
+        if (!isset($itemProperties['__metadata'])) {
+            $itemProperties['__metadata'] = array('type' => $this->getListItemEntityType());  //append entity metadata type
+        }
+        $options = array(
+            'list' => $this->name,
+            'data' => $itemProperties,
+            'method' => 'POST',
+            'formdigest' => $this->service->formDigest
+        );
+        $data = $this->service->requestList($options);
+
+        return $data->d;
+    }
+
+    /**
+     * Resolve ListItem entity type
+     *
+     * @return string
+     */
+    private function getListItemEntityType()
+    {
+        $encName = $this->xmlEncode($this->name);
+
+        return 'SP.Data.' . $encName . 'ListItem';
+    }
+
+    /**
+     * Encodes string
+     *
+     * @param mixed $value
+     *
+     * @return mixed
+     */
+    private function xmlEncode($value)
+    {
+        $encName = rawurlencode($value);
+        $encName = str_replace("%20", "_x0020_", $encName);
+
+        return $encName;
+    }
 }
