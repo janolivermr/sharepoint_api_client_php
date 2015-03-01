@@ -20,6 +20,11 @@ class SPClient
      * @var string
      */
     protected $url;
+
+    protected $scheme;
+    protected $server;
+    public $site;
+    private static $api = '/_api/v1.0';
     /**
      * SharePoint Username
      *
@@ -45,6 +50,8 @@ class SPClient
      */
     private $rtFa;
 
+    public $folders;
+
     /**
      * Default cURL Options
      *
@@ -68,10 +75,15 @@ class SPClient
     public function __construct($url, $username)
     {
         if (!function_exists('curl_init')) {
-            throw new \Exception('CURL module not available! SPOClient requires CURL. See http://php.net/manual/en/book.curl.php');
+            throw new \Exception('CURL module not available! This client requires CURL. See http://php.net/manual/en/book.curl.php');
         }
         $this->url = $url;
+        $parsed = parse_url($url);
+        $this->scheme = $parsed['scheme'];
+        $this->server = $parsed['host'];
+        $this->site = $parsed['path'];
         $this->username = $username;
+        $this->folders = new SPFolders($this);
     }
 
     /**
@@ -280,6 +292,74 @@ class SPClient
         curl_close($ch);
 
         return json_decode($result);
+    }
+
+    /**
+     * Request the SharePoint REST endpoint
+     *
+     * @param $path
+     * @param $verb
+     * @param null $data
+     * @param array $headers
+     *
+     * @return mixed
+     * @throws \Exception
+     *
+     */
+    public function apiRequest($path, $verb, $data = null, $headers = [])
+    {
+        $ch = curl_init();
+        $headers['Accept'] = 'application/json';
+        $headers['Cookie'] = 'FedAuth=' . $this->FedAuth . '; rtFa=' . $this->rtFa;
+        switch($verb) {
+            case 'POST':
+                $headers['X-RequestDigest'] = $this->formDigest;
+                curl_setopt($ch, CURLOPT_POST, 1);
+                if($data){
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                    $headers['Content-length'] = strlen($data);
+                }else{
+                    $headers['Content-length'] = 0;
+                }
+                break;
+            case 'PUT':
+                $headers['X-RequestDigest'] = $this->formDigest;
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+                $headers['X-Http-Method'] = 'PUT';
+                if($data){
+                    curl_setopt($ch, CURLOPT_POST, 1);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                    $headers['Content-length'] = strlen($data);
+                }else{
+                    $headers['Content-length'] = 0;
+                }
+                break;
+            default:
+                // nothing
+                break;
+        }
+        $curl_header = [];
+        foreach ($headers as $header => $value) {
+            $curl_header[] = $header.': '.$value;
+        }
+
+        $url = $this->scheme.'://'.$this->server.$this->site.static::$api.$path;
+
+        curl_setopt_array($ch, static::$curlOptions);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $curl_header);
+        curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+
+        $result = curl_exec($ch);
+        if ($result === false) {
+            throw new \Exception(curl_error($ch));
+        }
+        var_dump(curl_getinfo($ch));
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        return ['status' => $status, 'body' => json_decode($result)];
     }
 
     /**
