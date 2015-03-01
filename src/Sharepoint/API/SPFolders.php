@@ -50,7 +50,7 @@ class SPFolders extends SPClientAbstract {
     }
 
     public function uploadFile($path, $content){
-        $result = $this->client->apiRequest('/files/getByPath(\''.trim($path, " \t\n\r\0\x0B/").'\')/content', 'PUT', $content);
+        $result = $this->client->apiRequest('/files/getByPath(\''.trim($path, " \t\n\r\0\x0B/").'\')/content', 'PUT', $content, array('Content-Type' => 'text/plain'));
         if($result['status'] == 201){
             return $result['body'];
         }else{
