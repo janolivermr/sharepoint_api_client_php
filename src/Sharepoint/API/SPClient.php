@@ -354,7 +354,6 @@ class SPClient
         if ($result === false) {
             throw new \Exception(curl_error($ch));
         }
-        var_dump(curl_getinfo($ch));
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         curl_close($ch);
